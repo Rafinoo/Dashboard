@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="auth.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PG Smart Dashboard Stable</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{background:#f4f6f9}
+.box{
+background:white;
+padding:20px;
+border-radius:12px;
+box-shadow:0 4px 15px rgba(0,0,0,0.1);
+margin-top:20px;
+}
+.vehicle{
+background:#ffffff;
+padding:15px;
+margin-top:20px;
+border-radius:10px;
+border-left:5px solid #0d6efd;
+}
+.status-running{color:green;font-weight:bold;}
+.status-moving{color:#0d6efd;font-weight:bold;}
+.status-standby{color:orange;font-weight:bold;}
+.status-other{color:#6c757d;font-weight:bold;}
+textarea{
+width:100%;
+height:300px;
+margin-top:15px;
+font-size:14px;
+}
+</style>
+</head>
+<body>
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+
+<div class="container mt-4">
+<h2 class="text-center">📊 PG Smart Dashboard (Stable)</h2>
+
+<div class="box text-center">
+<input type="file" id="csvFile" accept=".csv" class="form-control mb-3">
+<button class="btn btn-primary w-100 mb-2" onclick="processCSV()">Generate Dashboard</button>
+<button class="btn btn-success w-100" onclick="copyWhatsApp()">📋 Copy WhatsApp Format</button>
+</div>
+
+<div id="dashboard"></div>
+
+<div class="box">
+<h5>📱 WhatsApp Preview</h5>
+<textarea id="whatsappText"></textarea>
+</div>
+
+</div>
+
+
+<script>
+
+function processCSV(){
+const file = document.getElementById("csvFile").files[0];
+if(!file){alert("Upload CSV first!");return;}
+
+Papa.parse(file,{
+    header:true,
+    skipEmptyLines:true,
+    complete:function(results){
+        generateDashboard(results.data);
+    }
+});
+}
+
+function generateDashboard(data){
+
+let total=0;
+let statusCount={};
+let teams={};
+let vehicleNo=1;
+
+data.forEach(row=>{
+
+let tt = row["SiteID"]?.trim();
+let team = row["AssignedTo"]?.trim();
+let rawStatus = row["CurrentStatus"]?.trim();
+
+if(!tt || !team) return;
+
+let clean = rawStatus ? rawStatus.trim() : "";
+let lower = clean.toLowerCase();
+
+let finalStatus="";
+
+if(lower.startsWith("run")){
+finalStatus="Running";
+}
+else if(lower.startsWith("work")){
+finalStatus="Standby";
+}
+else if(lower.startsWith("move") || lower.startsWith("normal")){
+finalStatus="Moving";
+}
+else{
+finalStatus=clean || "Unknown";
+}
+
+total++;
+
+if(!statusCount[finalStatus]){
+statusCount[finalStatus]=0;
+}
+statusCount[finalStatus]++;
+
+if(!teams[team]){
+teams[team]={
+vehicle:"Vehicle "+vehicleNo,
+list:[]
+};
+vehicleNo++;
+}
+
+teams[team].list.push({tt,status:finalStatus});
+});
+
+let dashHTML=`
+<div class="box">
+<h4>📊 PG DASHBOARD</h4>
+<hr>
+Total TT: ${total}<br>
+`;
+
+for(let key in statusCount){
+dashHTML+=`${key} : ${statusCount[key]}<br>`;
+}
+
+dashHTML+=`<hr><h5>📋 PG Status Update</h5></div>`;
+
+let whatsapp=`📊 *PG DASHBOARD*
+--------------------------------
+Total TT: ${total}
+`;
+
+for(let key in statusCount){
+whatsapp+=`${key} : ${statusCount[key]}\n`;
+}
+
+whatsapp+=`--------------------------------
+
+📋 *PG Status Update*
+
+`;
+
+for(let team in teams){
+
+dashHTML+=`<div class="vehicle">
+<h5>🚙 ${teams[team].vehicle}</h5>
+<p><strong>👤 Team: ${team}</strong></p><hr>`;
+
+whatsapp+=`*🚙${teams[team].vehicle}*
+
+👤 *Team: ${team}*
+-------------------------
+`;
+
+teams[team].list.forEach(item=>{
+
+let cls="status-other";
+if(item.status==="Running") cls="status-running";
+if(item.status==="Moving") cls="status-moving";
+if(item.status==="Standby") cls="status-standby";
+
+dashHTML+=`${item.tt} — <span class="${cls}">${item.status}</span><br>`;
+whatsapp+=`${item.tt} — ${item.status}\n`;
+
+});
+
+dashHTML+=`</div>`;
+whatsapp+=`\n`;
+}
+
+document.getElementById("dashboard").innerHTML=dashHTML;
+document.getElementById("whatsappText").value=whatsapp;
+}
+
+function copyWhatsApp(){
+let text=document.getElementById("whatsappText");
+text.select();
+document.execCommand("copy");
+alert("Copied for WhatsApp ✅");
+}
+
+</script>
+
+</body>
+</html>
