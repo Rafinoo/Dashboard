@@ -84,7 +84,14 @@ let vehicleNo=1;
 
 data.forEach(row=>{
 
-let tt = row["SiteID"]?.trim();
+let site = row["SiteID"]?.trim();
+let name = row["Name"]?.trim();
+
+let tt = site;
+
+if(name){
+tt = `${name} - ${site}`;
+}
 let team = row["AssignedTo"]?.trim();
 let rawStatus = row["CurrentStatus"]?.trim();
 
@@ -192,6 +199,57 @@ text.select();
 document.execCommand("copy");
 alert("Copied for WhatsApp ✅");
 }
+
+data.forEach(row=>{
+
+let site = row["SiteID"]?.trim();
+let name = row["Name"]?.trim();
+let team = row["AssignedTo"]?.trim();
+let rawStatus = row["CurrentStatus"]?.trim();
+
+if(!site || !team) return;
+
+let tt = site;
+if(name){
+tt = `${name} - ${site}`;
+}
+
+let clean = rawStatus ? rawStatus.trim() : "";
+let lower = clean.toLowerCase();
+
+let finalStatus="";
+
+if(lower.startsWith("run")){
+finalStatus="Running";
+}
+else if(lower.startsWith("work")){
+finalStatus="Standby";
+}
+else if(lower.startsWith("move") || lower.startsWith("normal")){
+finalStatus="Moving";
+}
+else{
+finalStatus=clean || "Unknown";
+}
+
+total++;
+
+if(!statusCount[finalStatus]){
+statusCount[finalStatus]=0;
+}
+statusCount[finalStatus]++;
+
+if(!teams[team]){
+teams[team]={
+vehicle:"Vehicle "+vehicleNo,
+list:[]
+};
+vehicleNo++;
+}
+
+teams[team].list.push({tt,status:finalStatus});
+
+});
 
 </script>
 
